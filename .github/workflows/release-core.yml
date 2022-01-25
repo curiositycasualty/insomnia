@@ -201,6 +201,21 @@ jobs:
           files: packages/insomnia-inso/artifacts/*
           fail_on_unmatched_files: true
   
+  update_inso_homebrew:
+    needs: [ inso_release_info, create_inso_release, upload_inso ]
+    name: Update Inso Formulae
+    runs-on: ubuntu-latest
+    steps:
+      # Update Homebrew's "inso" formulae
+      - name: Bump Inso Formulae
+        uses: Homebrew/actions/bump-formulae@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Bump only these formulae if outdated
+          formulae: |
+            inso
+            inso-beta
+  
   # Package and upload Insomnia Windows release artifacts
   windows_app:
     needs: [ npm ]
@@ -286,3 +301,16 @@ jobs:
         run: npm run app-release
         env:
           BUILD_TARGETS: AppImage,deb,tar.gz,rpm,snap
+
+  update_insomnia_homebrew:
+    needs: [ mac_app ]
+    name: Update Insomnia Formula
+    runs-on: ubuntu-latest
+    steps:
+      # Update Homebrew's "insomnia" formula
+      - name: Bump Insomnia Formula
+        uses: Homebrew/actions/bump-formulae@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Bump only these formulae if outdated
+          formulae: insomnia
