@@ -5,39 +5,16 @@ on:
     tags:
       - core@*
 
+  workflow_dispatch: {}
+
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GITHUB_REF: ${{ github.ref }}
   GITHUB_SHA: ${{ github.sha }}
 
 jobs:
-  # Run unit tests (excl smoke tests)
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: true
-      matrix:
-        os: [ macos-latest, windows-latest, ubuntu-latest ]
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v1
-      - name: Read Node version from .nvmrc
-        run: echo "##[set-output name=NVMRC;]$(cat .nvmrc)"
-        id: nvm
-      - name: Setup Node
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ steps.nvm.outputs.NVMRC }}
-      - name: Bootstrap packages
-        run: npm run bootstrap
-      - name: Type checks
-        run: npm run type-check
-      - name: Run tests
-        run: npm test
-  
   # Publish to NPM
   npm:
-    needs: [ test ]
     name: npm
     runs-on: ubuntu-latest
     steps:
@@ -52,13 +29,7 @@ jobs:
           node-version: ${{ steps.nvm.outputs.NVMRC }}
       - name: Bootstrap packages
         run: npm run bootstrap
-      - name: Release NPM packages
-        run: |
-          npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
-          npm run release
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-  
+
   # Check if a GitHub Release for Inso already exists
   inso_release_info:
     needs: [ npm ]
@@ -112,11 +83,11 @@ jobs:
   upload_inso:
     needs: [ inso_release_info, create_inso_release ]
     name: Package & release Inso
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-latest]
     steps:
       - name: Checkout branch
         uses: actions/checkout@v1
@@ -148,45 +119,6 @@ jobs:
       - name: Run CLI smoke tests
         run: npm run test:smoke:cli
 
-      - name: Codesign & create macOS installer
-        if: matrix.os == 'macos-latest'
-        run: |
-          chmod +x ./src/scripts/macos-pkg.sh
-          ./src/scripts/macos-pkg.sh
-        shell: bash
-        working-directory: packages/insomnia-inso
-        continue-on-error: false
-        env:
-          MACOS_CERTIFICATE: ${{ secrets.DESIGNER_MAC_CSC_LINK }}
-          MACOS_CERTIFICATE_PWD: ${{ secrets.DESIGNER_MAC_CSC_KEY_PASSWORD }}
-          PKG_NAME: ${{ steps.inso-variables.outputs.pkg-name }}
-          BUNDLE_ID: ${{ steps.inso-variables.outputs.bundle-id }}
-          VERSION: ${{ needs.inso_release_info.outputs.inso-version }}
-
-      - name: Notarize installer
-        if: matrix.os == 'macos-latest'
-        uses: devbotsxyz/xcode-notarize@v1
-        with:
-          product-path: packages/insomnia-inso/artifacts/${{ steps.inso-variables.outputs.pkg-name }}.pkg
-          primary-bundle-id: ${{ steps.inso-variables.outputs.bundle-id }}
-          appstore-connect-username: ${{ secrets.DESIGNER_APPLE_ID }}
-          appstore-connect-password: ${{ secrets.DESIGNER_APPLE_ID_PASSWORD }}
-
-      - name: Staple installer
-        if: matrix.os == 'macos-latest'
-        uses: devbotsxyz/xcode-staple@v1
-        with:
-          product-path: packages/insomnia-inso/artifacts/${{ steps.inso-variables.outputs.pkg-name }}.pkg
-
-      - name: Notarize binary
-        if: matrix.os == 'macos-latest'
-        uses: devbotsxyz/xcode-notarize@v1
-        with:
-          product-path: packages/insomnia-inso/binaries/inso
-          primary-bundle-id: ${{ steps.inso-variables.outputs.bundle-id }}-binary
-          appstore-connect-username: ${{ secrets.DESIGNER_APPLE_ID }}
-          appstore-connect-password: ${{ secrets.DESIGNER_APPLE_ID_PASSWORD }}
-
       - name: Create Inso CLI artifacts
         run: npm run inso-package:artifacts
         env:
@@ -198,33 +130,26 @@ jobs:
           tag_name: ${{ needs.inso_release_info.outputs.tag-name }}
           files: packages/insomnia-inso/artifacts/*
           fail_on_unmatched_files: true
-  
-  # Package and upload Insomnia Windows release artifacts
-  windows_app:
-    needs: [ npm ]
-    name: Windows
-    runs-on: windows-2016
-    env:
-      NPM_CONFIG_TARGET: 12.2.3
-      NPM_CONFIG_DISTURL: https://electronjs.org/headers
-      NPM_CONFIG_RUNTIME: electron
+
+# Update Homebrew's "inso" formulae
+  update_inso_homebrew:
+    needs: [ inso_release_info, create_inso_release, upload_inso ]
+    name: Update Inso Formulae
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
-        uses: actions/checkout@v1
-      - name: Read Node version from .nvmrc
-        run: echo "##[set-output name=NVMRC;]$(cat .nvmrc)"
-        id: nvm
-      - name: Setup Node
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ steps.nvm.outputs.NVMRC }}
-      - name: Bootstrap packages
-        run: npm run bootstrap
-      - name: Release app
-        run: npm run app-release
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
         env:
-          CSC_LINK: ${{ secrets.DESIGNER_WINDOWS_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.DESIGNER_WINDOWS_CSC_KEY_PASSWORD }}
+          GITHUB_REPOSITORY: homebrew-cask
+      - name: Bump Inso Formulae
+        uses: Homebrew/actions/bump-formulae@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Bump only these formulae if outdated
+          formulae: |
+            inso
+            inso-beta
   
   # Package and upload Insomnia MacOS release artifacts
   mac_app:
@@ -247,40 +172,19 @@ jobs:
           node-version: ${{ steps.nvm.outputs.NVMRC }}
       - name: Bootstrap packages
         run: npm run bootstrap
-      - name: Release app
-        run: npm run app-release
-        env:
-          APPLE_ID: ${{ secrets.DESIGNER_APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.DESIGNER_APPLE_ID_PASSWORD }}
-          CSC_LINK: ${{ secrets.DESIGNER_MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.DESIGNER_MAC_CSC_KEY_PASSWORD }}
-  
-  # Package and upload Insomnia Linux release artifacts
-  linux_app:
-    needs: [ npm ]
-    name: Linux
+
+  # Update Homebrew's "insomnia" formula
+  update_insomnia_homebrew:
+    needs: [ mac_app ]
+    name: Update Insomnia Formula
     runs-on: ubuntu-latest
-    env:
-      NPM_CONFIG_TARGET: 12.2.3
-      NPM_CONFIG_DISTURL: https://electronjs.org/headers
-      NPM_CONFIG_RUNTIME: electron
     steps:
-      - name: Install Snapcraft
-        run: |
-          sudo snap install snapcraft --classic
-          echo "${{ secrets.SNAPCRAFT_LOGIN_FILE }}" > snapcraft.txt && snapcraft login --with snapcraft.txt
-      - name: Checkout branch
-        uses: actions/checkout@v1
-      - name: Read Node version from .nvmrc
-        run: echo "##[set-output name=NVMRC;]$(cat .nvmrc)"
-        id: nvm
-      - name: Setup Node
-        uses: actions/setup-node@v1
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      - name: Bump Insomnia Formula
+        uses: Homebrew/actions/bump-formulae@master
         with:
-          node-version: ${{ steps.nvm.outputs.NVMRC }}
-      - name: Bootstrap packages
-        run: npm run bootstrap
-      - name: Release app
-        run: npm run app-release
-        env:
-          BUILD_TARGETS: AppImage,deb,tar.gz,rpm,snap
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Bump only these formulae if outdated
+          formulae: insomnia
