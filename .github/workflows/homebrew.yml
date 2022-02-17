@@ -72,7 +72,7 @@ jobs:
       - name: Bump 'inso-beta' Cask
         if: |
           steps.formulae.outputs.outdated == 'true'
-          contains(steps.formulae.outputs.*, 'inso-beta')
+          ${{ contains(steps.formulae.outputs.*, 'inso-beta') }}
         run: |
           latest='${{ steps.formulae.outputs.inso-beta }}'
           echo "::notice ::updating inso-beta to ${latest}"
@@ -89,7 +89,7 @@ jobs:
       # - name: Bump 'inso' Cask
       #   if: |
       #     steps.formulae.outputs.outdated == 'true'
-      #     contains(steps.formulae.outputs.*, 'inso')
+      #     ${{ contains(steps.formulae.outputs.*, 'inso') }}
       #   run: |
       #     latest='${{ steps.formulae.outputs.inso }}'
       #     echo "::notice ::updating inso to ${latest}"
@@ -103,7 +103,7 @@ jobs:
       # - name: Bump 'insomnia' Cask
       #   if: |
       #     steps.formulae.outputs.outdated == 'true'
-      #     contains(steps.formulae.outputs.*, 'insomnia')
+      #     ${{ contains(steps.formulae.outputs.*, 'insomnia') }}
       #   run: |
       #     latest='${{ steps.formulae.outputs.insomnia }}'
       #     echo "::notice ::updating insomnia to ${latest}"
