@@ -10,6 +10,7 @@ on:
       newOnly:
         description: Only operate on outdated formulae
         default: 'true'
+        type: choice
         options:
           - 'true'
           - 'false'
