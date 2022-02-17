@@ -57,7 +57,7 @@ jobs:
               | jq -r '.[] | "\(.cask) \(.version.latest)"'
           )"
 
-          for cask in $casks; do
+          for cask in $(echo "$casks"); do
             # overwrite to "true" for any iterations through this loop
             echo "::set-output name=outdated::true"
 
