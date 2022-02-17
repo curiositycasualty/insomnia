@@ -44,6 +44,7 @@ jobs:
         id: formulae
         run: |
           set -eo pipefail
+          set -x
 
           echo "::set-output name=outdated::false"
 
@@ -80,33 +81,30 @@ jobs:
             --version="$latest" \
             inso-beta
 
-      # inso/insomnia casks below handled by Homebrew's "autobump"
-      # see also: if https://github.com/Homebrew/homebrew-core/pull/95329
+      - name: Bump 'inso' Cask
+        if: |
+          steps.formulae.outputs.outdated == 'true' &&
+          contains(steps.formulae.outputs.*, 'inso')
+        run: |
+          latest='${{ steps.formulae.outputs.inso }}'
+          echo "::notice ::updating inso to ${latest}"
+          brew bump-cask-pr \
+            --no-fork \
+            --no-browse \
+            '--message=Created by Github Actions in the [Kong/Insomnia repository](https://github.com/Kong/insomnia)' \
+            --version="$latest" \
+            inso
 
-      # - name: Bump 'inso' Cask
-      #   if: |
-      #     steps.formulae.outputs.outdated == 'true' &&
-      #     contains(steps.formulae.outputs.*, 'inso')
-      #   run: |
-      #     latest='${{ steps.formulae.outputs.inso }}'
-      #     echo "::notice ::updating inso to ${latest}"
-      #     brew bump-cask-pr \
-      #       --no-fork \
-      #       --no-browse \
-      #       '--message=Created by Github Actions in the [Kong/Insomnia repository](https://github.com/Kong/insomnia)' \
-      #       --version="$latest" \
-      #       inso
-
-      # - name: Bump 'insomnia' Cask
-      #   if: |
-      #     steps.formulae.outputs.outdated == 'true' &&
-      #     contains(steps.formulae.outputs.*, 'insomnia')
-      #   run: |
-      #     latest='${{ steps.formulae.outputs.insomnia }}'
-      #     echo "::notice ::updating insomnia to ${latest}"
-      #     brew bump-cask-pr \
-      #       --no-fork \
-      #       --no-browse \
-      #       '--message=Created by Github Actions in the [Kong/Insomnia repository](https://github.com/Kong/insomnia)' \
-      #       --version="$latest" \
-      #       insomnia
+      - name: Bump 'insomnia' Cask
+        if: |
+          steps.formulae.outputs.outdated == 'true' &&
+          contains(steps.formulae.outputs.*, 'insomnia')
+        run: |
+          latest='${{ steps.formulae.outputs.insomnia }}'
+          echo "::notice ::updating insomnia to ${latest}"
+          brew bump-cask-pr \
+            --no-fork \
+            --no-browse \
+            '--message=Created by Github Actions in the [Kong/Insomnia repository](https://github.com/Kong/insomnia)' \
+            --version="$latest" \
+            insomnia
