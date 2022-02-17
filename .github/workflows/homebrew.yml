@@ -52,11 +52,8 @@ jobs:
           fi
 
           for cask in $(
-            brew livecheck \
-              "${NEWER_ONLY_FLAG:-}" \
-              --json \
-              inso-beta inso insomnia \
-                | jq -r '.[] | "\(.cask) \(.version.latest)"'
+            brew livecheck "${NEWER_ONLY_FLAG:-}" --json inso-beta \
+              | jq -r '.[] | "\(.cask) \(.version.latest)"'
           ); do
             # overwrite to "true" for any iterations through this loop
             echo "::set-output name=outdated::true"
