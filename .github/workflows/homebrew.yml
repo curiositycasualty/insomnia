@@ -52,10 +52,12 @@ jobs:
             NEWER_ONLY_FLAG=' --newer-only '
           fi
 
-          for cask in $(
-            brew livecheck "${NEWER_ONLY_FLAG:-}" --json inso-beta \
+          casks="$(
+            brew livecheck "${NEWER_ONLY_FLAG:-}" --json inso{,-beta,mnia} \
               | jq -r '.[] | "\(.cask) \(.version.latest)"'
-          ); do
+          )"
+
+          for cask in $casks; do
             # overwrite to "true" for any iterations through this loop
             echo "::set-output name=outdated::true"
 
