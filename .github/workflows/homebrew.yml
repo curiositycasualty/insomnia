@@ -38,15 +38,17 @@ jobs:
         uses: Homebrew/actions/bump-formulae@master
         with:
           token: ${{ secrets.HOMEBREW_PR_GH_TOKEN }}
-          formulae: --debug --verbose inso-beta
+          formulae: inso-beta
+
       - name: Bump Inso Formula
         uses: Homebrew/actions/bump-formulae@master
         with:
           token: ${{ secrets.HOMEBREW_PR_GH_TOKEN }}
-          formulae: --debug --verbose inso
+          formulae: inso
+
       - name: Bump Insomnia Formula
         uses: Homebrew/actions/bump-formulae@master
         with:
           token: ${{ secrets.HOMEBREW_PR_GH_TOKEN }}
           # Bump only these formulae if outdated
-          formulae: --debug --verbose insomnia
+          formulae: insomnia
