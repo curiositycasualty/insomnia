@@ -53,7 +53,7 @@ jobs:
           fi
 
           casks="$(
-            brew livecheck "${NEWER_ONLY_FLAG:-}" --json inso{,-beta,mnia} \
+            brew livecheck ${NEWER_ONLY_FLAG:-} --json inso{,-beta,mnia} \
               | jq -r '.[] | "\(.cask) \(.version.latest)"'
           )"
 
