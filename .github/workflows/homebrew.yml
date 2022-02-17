@@ -5,7 +5,14 @@ on:
     # weekdays at 00:00
     - cron: '0 0 * * 1-5'
 
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      newOnly:
+        description: Only operate on outdated formulae
+        default: 'true'
+        options:
+          - 'true'
+          - 'false'
 
 jobs:
   update_homebrew:
@@ -32,23 +39,80 @@ jobs:
       - name: Add "Versions" Tap
         run: brew tap homebrew/homebrew-cask-versions
 
-      # Update Homebrew's Inso(mnia) formulae
-      # https://github.com/Homebrew/actions/tree/master/bump-formulae
-      - name: Bump Inso (Beta) Formula
-        uses: Homebrew/actions/bump-formulae@master
-        with:
-          token: ${{ secrets.HOMEBREW_PR_GH_TOKEN }}
-          formulae: inso-beta
+      - name: Any Outdated Formulae
+        id: formulae
+        run: |
+          set -eo pipefail
 
-      - name: Bump Inso Formula
-        uses: Homebrew/actions/bump-formulae@master
-        with:
-          token: ${{ secrets.HOMEBREW_PR_GH_TOKEN }}
-          formulae: inso
+          echo "::set-output name=outdated::false"
 
-      - name: Bump Insomnia Formula
-        uses: Homebrew/actions/bump-formulae@master
-        with:
-          token: ${{ secrets.HOMEBREW_PR_GH_TOKEN }}
-          # Bump only these formulae if outdated
-          formulae: insomnia
+          if [[ "${{ github.event.inputs.newOnly }}" == 'true' ]]; then
+            NEWER_ONLY_FLAG=' --newer-only '
+          fi
+
+          for cask in $(
+            brew livecheck \
+              "${NEWER_ONLY_FLAG:-}" \
+              --json \
+              inso{,-beta,mnia} \
+                | jq -r '.[] | "\(.cask) \(.version.latest)"'
+          ); do
+            # overwrite to "true" for any iterations through this loop
+            echo "::set-output name=outdated::true"
+
+            # set outputs for latest version by cask name
+            echo "::set-output name=${cask%% *}::${cask##* }"
+          done
+
+      - name: No Updates Required
+        id: inso-beta
+        if: steps.formulae.outputs.outdated == 'false'
+        run: echo "::notice ::Formulae already up to date! 🎉"
+
+      - name: Bump 'inso-beta' Cask
+        id: inso-beta
+        if: |
+          steps.formulae.outputs.outdated == 'true'
+          contains(steps.formulae.outputs.*, 'inso-beta')
+        run: |
+          latest='${{ steps.formulae.outputs.inso-beta }}'
+          echo "::notice ::updating inso-beta to ${latest}"
+          brew bump-cask-pr \
+            --no-fork \
+            --no-browse \
+            '--message=Created by Github Actions in the [Kong/Insomnia repository](https://github.com/Kong/insomnia)' \
+            --version="$latest" \
+            inso-beta
+
+      # inso/insomnia casks below handled by Homebrew's "autobump"
+      # see also: if https://github.com/Homebrew/homebrew-core/pull/95329
+
+      # - name: Bump 'inso' Cask
+      #   id: inso
+      #   if: |
+      #     steps.formulae.outputs.outdated == 'true'
+      #     contains(steps.formulae.outputs.*, 'inso')
+      #   run: |
+      #     latest='${{ steps.formulae.outputs.inso }}'
+      #     echo "::notice ::updating inso to ${latest}"
+      #     brew bump-cask-pr \
+      #       --no-fork \
+      #       --no-browse \
+      #       '--message=Created by Github Actions in the [Kong/Insomnia repository](https://github.com/Kong/insomnia)' \
+      #       --version="$latest" \
+      #       inso
+
+      # - name: Bump 'insomnia' Cask
+      #   id: insomnia
+      #   if: |
+      #     steps.formulae.outputs.outdated == 'true'
+      #     contains(steps.formulae.outputs.*, 'insomnia')
+      #   run: |
+      #     latest='${{ steps.formulae.outputs.insomnia }}'
+      #     echo "::notice ::updating insomnia to ${latest}"
+      #     brew bump-cask-pr \
+      #       --no-fork \
+      #       --no-browse \
+      #       '--message=Created by Github Actions in the [Kong/Insomnia repository](https://github.com/Kong/insomnia)' \
+      #       --version="$latest" \
+      #       insomnia
