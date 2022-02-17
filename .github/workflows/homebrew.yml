@@ -55,7 +55,7 @@ jobs:
             brew livecheck \
               "${NEWER_ONLY_FLAG:-}" \
               --json \
-              inso{,-beta,mnia} \
+              inso-beta inso insomnia \
                 | jq -r '.[] | "\(.cask) \(.version.latest)"'
           ); do
             # overwrite to "true" for any iterations through this loop
