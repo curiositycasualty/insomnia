@@ -64,8 +64,8 @@ jobs:
             # overwrite to "true" for any iterations through this loop
             echo "::set-output name=outdated::true"
 
-            name="(  echo "$cask" | cut -d' ' -f1)"
-            latest="(echo "$cask" | cut -d' ' -f2)"
+            name="$(  echo "$cask" | cut -d' ' -f1)"
+            latest="$(echo "$cask" | cut -d' ' -f2)"
 
             # set outputs for latest version by cask name
             echo "::set-output name=${name}::${latest}"
