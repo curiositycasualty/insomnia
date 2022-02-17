@@ -66,12 +66,10 @@ jobs:
           done
 
       - name: No Updates Required
-        id: inso-beta
         if: steps.formulae.outputs.outdated == 'false'
         run: echo "::notice ::Formulae already up to date! 🎉"
 
       - name: Bump 'inso-beta' Cask
-        id: inso-beta
         if: |
           steps.formulae.outputs.outdated == 'true'
           contains(steps.formulae.outputs.*, 'inso-beta')
@@ -89,7 +87,6 @@ jobs:
       # see also: if https://github.com/Homebrew/homebrew-core/pull/95329
 
       # - name: Bump 'inso' Cask
-      #   id: inso
       #   if: |
       #     steps.formulae.outputs.outdated == 'true'
       #     contains(steps.formulae.outputs.*, 'inso')
@@ -104,7 +101,6 @@ jobs:
       #       inso
 
       # - name: Bump 'insomnia' Cask
-      #   id: insomnia
       #   if: |
       #     steps.formulae.outputs.outdated == 'true'
       #     contains(steps.formulae.outputs.*, 'insomnia')
